@@ -1,0 +1,30 @@
+{
+  "name": "e2ee",
+  "version": "1.0.0",
+  "description": "End-to-End Encryption Client",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HR/e2ee.git"
+  },
+  "keywords": [
+    "e2ee",
+    "encryption",
+    "chat",
+    "signal",
+    "signal",
+    "protocol",
+    "messaging",
+    "secure",
+    "chat"
+  ],
+  "author": "Habib Rehman",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/HR/e2ee/issues"
+  },
+  "homepage": "https://github.com/HR/e2ee#readme"
+}
