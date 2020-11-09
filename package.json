@@ -2,7 +2,7 @@
   "name": "e2ee",
   "version": "1.0.0",
   "description": "End-to-End Encryption Client",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

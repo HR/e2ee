@@ -47,14 +47,13 @@ var __rest = (this && this.__rest) || function (s, e) {
         }
     return t;
 };
-Object.defineProperty(exports, "__esModule", { value: true });
-var crypto = require('crypto'), fs = require('fs'), hkdf = require('futoin-hkdf'), 
-// TODO: Replace with crypto.diffieHellman once nodejs#26626 lands on v12 LTS
-_a = require('tweetnacl'), box = _a.box, sign = _a.sign, _b = require('./util'), chunk = _b.chunk, hexToUint8 = _b.hexToUint8, strToUint8 = _b.strToUint8, Uint8ToHex = _b.Uint8ToHex, DB_KEY = 'publicKey', CIPHER = 'aes-256-cbc', RATCHET_KEYS_LEN = 64, RATCHET_KEYS_HASH = 'SHA-256', MESSAGE_KEY_LEN = 80, MESSAGE_CHUNK_LEN = 32, MESSAGE_KEY_SEED = 1, // 0x01
+var scrypto = require('crypto'), fs = require('fs'), hkdf = require('futoin-hkdf'), 
+// TODO: Replace with scrypto.diffieHellman once nodejs#26626 lands on v12 LTS
+_a = require('tweetnacl'), box = _a.box, sign = _a.sign, _b = require('./util'), chunk = _b.chunk, hexToUint8 = _b.hexToUint8, strToUint8 = _b.strToUint8, Uint8ToHex = _b.Uint8ToHex, STORE_KEY = 'publicKey', CIPHER = 'aes-256-cbc', RATCHET_KEYS_LEN = 64, RATCHET_KEYS_HASH = 'SHA-256', MESSAGE_KEY_LEN = 80, MESSAGE_CHUNK_LEN = 32, MESSAGE_KEY_SEED = 1, // 0x01
 CHAIN_KEY_SEED = 2, // 0x02
 RACHET_MESSAGE_COUNT = 10; // Rachet after this no of messages sent
-var default_1 = /** @class */ (function () {
-    function default_1(options) {
+module.exports = /** @class */ (function () {
+    function E2EE(options) {
         this._sessions = {};
         this._store = options.store || new Map();
         this._getSecretIdentity = options.getSecretIdentity || this._getSecretIdentityDef;
@@ -62,28 +61,28 @@ var default_1 = /** @class */ (function () {
         // Bindings
         this.init = this.init.bind(this);
     }
-    // Override
-    default_1.prototype._getSecretIdentityDef = function (publicKey) {
+    // Default implementations
+    E2EE.prototype._getSecretIdentityDef = function (publicKey) {
         return __awaiter(this, void 0, void 0, function () {
             return __generator(this, function (_a) {
                 return [2 /*return*/, this._store.get(publicKey)];
             });
         });
     };
-    default_1.prototype._setSecretIdentityDef = function (publicKey, secretKey) {
+    E2EE.prototype._setSecretIdentityDef = function (publicKey, secretKey) {
         return __awaiter(this, void 0, void 0, function () {
             return __generator(this, function (_a) {
                 return [2 /*return*/, this._store.set(publicKey, secretKey)];
             });
         });
     };
-    default_1.prototype.init = function () {
+    E2EE.prototype.init = function () {
         return __awaiter(this, void 0, void 0, function () {
             var publicKey, secretKey, _a;
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
-                        publicKey = this._store.get(DB_KEY, false);
+                        publicKey = this._store.get(STORE_KEY, false);
                         _a = publicKey;
                         if (!_a) return [3 /*break*/, 2];
                         return [4 /*yield*/, this._getSecretIdentity(publicKey)];
@@ -107,12 +106,12 @@ var default_1 = /** @class */ (function () {
             });
         });
     };
-    default_1.prototype._saveIdentity = function () {
+    E2EE.prototype._saveIdentity = function () {
         return __awaiter(this, void 0, void 0, function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        this._store.set(DB_KEY, this._identity.publicKey);
+                        this._store.set(STORE_KEY, this._identity.publicKey);
                         // Save the private key in the OS's keychain under public key
                         return [4 /*yield*/, this._setSecretIdentity(this._identity.publicKey, Uint8ToHex(this._identity.secretKey))];
                     case 1:
@@ -124,7 +123,7 @@ var default_1 = /** @class */ (function () {
         });
     };
     // Generates a new Curve25519 key pair
-    default_1.prototype._generateIdentityKeyPair = function () {
+    E2EE.prototype._generateIdentityKeyPair = function () {
         return __awaiter(this, void 0, void 0, function () {
             var keyPair;
             return __generator(this, function (_a) {
@@ -142,41 +141,41 @@ var default_1 = /** @class */ (function () {
             });
         });
     };
-    default_1.prototype.sign = function (data) {
+    E2EE.prototype.sign = function (data) {
         return Uint8ToHex(sign.detached(strToUint8(data), this._identity.secretKey));
     };
-    default_1.prototype.verify = function (publicKey, data, signature) {
+    E2EE.prototype.verify = function (publicKey, data, signature) {
         return sign.detached.verify(strToUint8(data), hexToUint8(signature), hexToUint8(publicKey));
     };
     // Generates a server connection authentication request
-    default_1.prototype.generateAuthRequest = function () {
+    E2EE.prototype.generateAuthRequest = function () {
         var timestamp = new Date().toISOString();
         var signature = this.sign(timestamp);
         var publicKey = this._identity.publicKey;
         return { publicKey: publicKey, timestamp: timestamp, signature: signature };
     };
     // Returns a hash digest of the given data
-    default_1.prototype.hash = function (data, enc, alg) {
+    E2EE.prototype.hash = function (data, enc, alg) {
         if (enc === void 0) { enc = 'hex'; }
         if (alg === void 0) { alg = 'sha256'; }
-        return crypto.createHash(alg).update(data).digest(enc);
+        return scrypto.createHash(alg).update(data).digest(enc);
     };
     // Returns a hash digest of the given file
-    default_1.prototype.hashFile = function (path, enc, alg) {
+    E2EE.prototype.hashFile = function (path, enc, alg) {
         if (enc === void 0) { enc = 'hex'; }
         if (alg === void 0) { alg = 'sha256'; }
         return new Promise(function (resolve, reject) {
             return fs
                 .createReadStream(path)
                 .on('error', reject)
-                .pipe(crypto.createHash(alg).setEncoding(enc))
+                .pipe(scrypto.createHash(alg).setEncoding(enc))
                 .once('finish', function () {
                 resolve(this.read());
             });
         });
     };
     // Hash Key Derivation Function (based on HMAC)
-    default_1.prototype._HKDF = function (input, salt, info, length) {
+    E2EE.prototype._HKDF = function (input, salt, info, length) {
         if (length === void 0) { length = RATCHET_KEYS_LEN; }
         // input = input instanceof Uint8Array ? Buffer.from(input) : input
         // salt = salt instanceof Uint8Array ? Buffer.from(salt) : salt
@@ -187,20 +186,20 @@ var default_1 = /** @class */ (function () {
         });
     };
     // Hash-based Message Authentication Code
-    default_1.prototype._HMAC = function (key, data, enc, algo) {
+    E2EE.prototype._HMAC = function (key, data, enc, algo) {
         if (enc === void 0) { enc = 'utf8'; }
         if (algo === void 0) { algo = 'sha256'; }
-        return crypto.createHmac(algo, key).update(data).digest(enc);
+        return scrypto.createHmac(algo, key).update(data).digest(enc);
     };
     // Generates a new Curve25519 key pair
-    default_1.prototype._generateRatchetKeyPair = function () {
+    E2EE.prototype._generateRatchetKeyPair = function () {
         var keyPair = box.keyPair();
         // Encode in hex for easier handling
         keyPair.publicKey = Buffer.from(keyPair.publicKey).toString('hex');
         return keyPair;
     };
     // Initialises an end-to-end encryption session
-    default_1.prototype.initSession = function (id) {
+    E2EE.prototype.initSession = function (id) {
         return __awaiter(this, void 0, void 0, function () {
             var _a, publicKey, secretKey, timestamp, signature;
             return __generator(this, function (_b) {
@@ -230,7 +229,7 @@ var default_1 = /** @class */ (function () {
         });
     };
     // Starts the session
-    default_1.prototype.startSession = function (id, keyMessage) {
+    E2EE.prototype.startSession = function (id, keyMessage) {
         return __awaiter(this, void 0, void 0, function () {
             var publicKey, timestamp, signature, sigValid, ratchet, secretKey, rootKey;
             return __generator(this, function (_a) {
@@ -257,7 +256,7 @@ var default_1 = /** @class */ (function () {
         });
     };
     // Calculates the ratchet keys (root and chain key)
-    default_1.prototype._calcRatchetKeys = function (oldRootKey, sendingSecretKey, receivingKey) {
+    E2EE.prototype._calcRatchetKeys = function (oldRootKey, sendingSecretKey, receivingKey) {
         // Convert receivingKey to a Uint8Array if it isn't already
         if (typeof receivingKey === 'string')
             receivingKey = hexToUint8(receivingKey);
@@ -270,7 +269,7 @@ var default_1 = /** @class */ (function () {
         return chunk(ratchetKeys, RATCHET_KEYS_LEN / 2);
     };
     // Calculates the next receiving or sending ratchet
-    default_1.prototype._calcRatchet = function (session, sending, receivingKey) {
+    E2EE.prototype._calcRatchet = function (session, sending, receivingKey) {
         var ratchet = session.currentRatchet;
         var ratchetChains, publicKey, previousChain;
         if (sending) {
@@ -308,7 +307,7 @@ var default_1 = /** @class */ (function () {
     // Calculates the next message key for the ratchet and updates it
     // TODO: Try to get messagekey with message counter otherwise calculate all
     // message keys up to it and return it (instead of pre-comp on ratchet)
-    default_1.prototype._calcMessageKey = function (ratchet) {
+    E2EE.prototype._calcMessageKey = function (ratchet) {
         var chain = ratchet.chain;
         // Calculate next message key
         var messageKey = this._HMAC(chain.key, Buffer.alloc(1, MESSAGE_KEY_SEED));
@@ -323,9 +322,9 @@ var default_1 = /** @class */ (function () {
         return chunk(this._HKDF(messageKey, 'E2eeCrypt', null, MESSAGE_KEY_LEN), MESSAGE_CHUNK_LEN);
     };
     // Encrypts a message
-    default_1.prototype.encrypt = function (id, returnCipher, message) {
-        if (returnCipher === void 0) { returnCipher = true; }
+    E2EE.prototype.encrypt = function (id, message, returnCipher) {
         if (message === void 0) { message = {}; }
+        if (returnCipher === void 0) { returnCipher = false; }
         return __awaiter(this, void 0, void 0, function () {
             var session, ratchet, sendingChain, shouldRatchet, previousCounter, publicKey, _a, encryptKey, hmac, iv, counter, msgJson, msgCipher, packet, _b, res;
             return __generator(this, function (_c) {
@@ -347,7 +346,7 @@ var default_1 = /** @class */ (function () {
                         // Encrypt message
                         if (message) {
                             msgJson = JSON.stringify(message);
-                            msgCipher = crypto.createCipheriv(CIPHER, encryptKey, iv);
+                            msgCipher = scrypto.createCipheriv(CIPHER, encryptKey, iv);
                             message = msgCipher.update(msgJson, 'utf8', 'hex') + msgCipher.final('hex');
                         }
                         packet = {
@@ -365,15 +364,15 @@ var default_1 = /** @class */ (function () {
                         console.log('Encrypted', packet);
                         res = { packet: packet, cipher: null };
                         if (returnCipher)
-                            res.cipher = crypto.createCipheriv(CIPHER, encryptKey, iv);
+                            res.cipher = scrypto.createCipheriv(CIPHER, encryptKey, iv);
                         return [2 /*return*/, res];
                 }
             });
         });
     };
     // Decrypts a message
-    default_1.prototype.decrypt = function (id, packet, returnDecipher) {
-        if (returnDecipher === void 0) { returnDecipher = true; }
+    E2EE.prototype.decrypt = function (id, packet, returnDecipher) {
+        if (returnDecipher === void 0) { returnDecipher = false; }
         return __awaiter(this, void 0, void 0, function () {
             var signature, packetBody, sigValid, publicKey, counter, previousCounter, message, session, receivingChain, _a, decryptKey, hmac, iv, msgDecipher, res;
             return __generator(this, function (_b) {
@@ -402,19 +401,18 @@ var default_1 = /** @class */ (function () {
                         console.log('Calculated decryption creds', decryptKey.toString('hex'), iv.toString('hex'));
                         // Decrypt the message contents
                         if (message) {
-                            msgDecipher = crypto.createDecipheriv(CIPHER, decryptKey, iv);
+                            msgDecipher = scrypto.createDecipheriv(CIPHER, decryptKey, iv);
                             message = msgDecipher.update(message, 'hex', 'utf8') + msgDecipher.final('utf8');
                             message = JSON.parse(message);
                             console.log('--> Decrypted message', message);
                         }
                         res = { message: message, decipher: null };
                         if (returnDecipher)
-                            res.decipher = crypto.createDecipheriv(CIPHER, decryptKey, iv);
+                            res.decipher = scrypto.createDecipheriv(CIPHER, decryptKey, iv);
                         return [2 /*return*/, res];
                 }
             });
         });
     };
-    return default_1;
+    return E2EE;
 }());
-exports.default = default_1;

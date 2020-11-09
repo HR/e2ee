@@ -1,12 +1,6 @@
 'use strict';
-module.exports = {
-    chunk: chunk,
-    hexToUint8: hexToUint8,
-    strToUint8: strToUint8,
-    Uint8ToHex: Uint8ToHex
-};
 // Splits a buffer into chunks of a given size
-function chunk(buffer, chunkSize) {
+exports.chunk = function (buffer, chunkSize) {
     if (!Buffer.isBuffer(buffer))
         throw new Error('Buffer is required');
     var result = [], i = 0, len = buffer.length;
@@ -15,15 +9,15 @@ function chunk(buffer, chunkSize) {
         result.push(buffer.slice(i, Math.min((i += chunkSize), len)));
     }
     return result;
-}
+};
 // Converts a hex string into a Uint8Array
-function hexToUint8(hex) {
+exports.hexToUint8 = function (hex) {
     return Uint8Array.from(Buffer.from(hex, 'hex'));
-}
+};
 // Converts a string into a Uint8Array
-function strToUint8(hex) {
+exports.strToUint8 = function (hex) {
     return Uint8Array.from(Buffer.from(hex));
-}
-function Uint8ToHex(uint8) {
+};
+exports.Uint8ToHex = function (uint8) {
     return Buffer.from(uint8).toString('hex');
-}
+};

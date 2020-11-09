@@ -1,12 +1,12 @@
 /// <reference types="node" />
 
-const crypto = require('crypto'),
+const scrypto = require('crypto'),
   fs = require('fs'),
   hkdf = require('futoin-hkdf'),
-  // TODO: Replace with crypto.diffieHellman once nodejs#26626 lands on v12 LTS
+  // TODO: Replace with scrypto.diffieHellman once nodejs#26626 lands on v12 LTS
   { box, sign } = require('tweetnacl'),
   { chunk, hexToUint8, strToUint8, Uint8ToHex } = require('./util'),
-  DB_KEY = 'publicKey',
+  STORE_KEY = 'publicKey',
   CIPHER = 'aes-256-cbc',
   RATCHET_KEYS_LEN = 64,
   RATCHET_KEYS_HASH = 'SHA-256',
@@ -49,18 +49,17 @@ interface Packet {
   signature: string
 }
 
-export default class {
+module.exports = class E2EE {
   private _store: Store
   private _sessions: any = {}
   private _identity: any
   private _getSecretIdentity: GetSecretIdentity
   private _setSecretIdentity: SetSecretIdentity
 
-  // Override
+  // Default implementations
   async _getSecretIdentityDef(publicKey: string) {
     return this._store.get(publicKey)
   }
-
   async _setSecretIdentityDef(publicKey: string, secretKey: string) {
     return this._store.set(publicKey, secretKey)
   }
@@ -74,7 +73,7 @@ export default class {
   }
 
   async init() {
-    const publicKey = this._store.get(DB_KEY, false)
+    const publicKey = this._store.get(STORE_KEY, false)
     const secretKey = publicKey && (await this._getSecretIdentity(publicKey))
     // Restore keys if they exist
     if (publicKey && secretKey) {
@@ -87,7 +86,7 @@ export default class {
   }
 
   async _saveIdentity() {
-    this._store.set(DB_KEY, this._identity.publicKey)
+    this._store.set(STORE_KEY, this._identity.publicKey)
     // Save the private key in the OS's keychain under public key
     await this._setSecretIdentity(this._identity.publicKey, Uint8ToHex(this._identity.secretKey))
   }
@@ -120,7 +119,7 @@ export default class {
 
   // Returns a hash digest of the given data
   hash(data: any, enc = 'hex', alg = 'sha256') {
-    return crypto.createHash(alg).update(data).digest(enc)
+    return scrypto.createHash(alg).update(data).digest(enc)
   }
 
   // Returns a hash digest of the given file
@@ -129,7 +128,7 @@ export default class {
       fs
         .createReadStream(path)
         .on('error', reject)
-        .pipe(crypto.createHash(alg).setEncoding(enc))
+        .pipe(scrypto.createHash(alg).setEncoding(enc))
         .once('finish', function (this: any) {
           resolve(this.read())
         })
@@ -149,7 +148,7 @@ export default class {
 
   // Hash-based Message Authentication Code
   _HMAC(key: Buffer | string, data: Buffer | string, enc = 'utf8', algo = 'sha256'): Buffer | string {
-    return crypto.createHmac(algo, key).update(data).digest(enc)
+    return scrypto.createHmac(algo, key).update(data).digest(enc)
   }
 
   // Generates a new Curve25519 key pair
@@ -270,7 +269,7 @@ export default class {
   }
 
   // Encrypts a message
-  async encrypt(id: string, returnCipher = true, message = {}) {
+  async encrypt(id: string, message = {}, returnCipher = false) {
     let session = this._sessions[id]
     let ratchet = session.currentRatchet
     let sendingChain = session.sending[ratchet.sendingKeys.publicKey]
@@ -289,7 +288,7 @@ export default class {
     // Encrypt message
     if (message) {
       const msgJson = JSON.stringify(message)
-      const msgCipher = crypto.createCipheriv(CIPHER, encryptKey, iv)
+      const msgCipher = scrypto.createCipheriv(CIPHER, encryptKey, iv)
       message = msgCipher.update(msgJson, 'utf8', 'hex') + msgCipher.final('hex')
     }
 
@@ -308,12 +307,12 @@ export default class {
 
     // Return cipher
     let res = { packet, cipher: null }
-    if (returnCipher) res.cipher = crypto.createCipheriv(CIPHER, encryptKey, iv)
+    if (returnCipher) res.cipher = scrypto.createCipheriv(CIPHER, encryptKey, iv)
     return res
   }
 
   // Decrypts a message
-  async decrypt(id: string, packet: Packet, returnDecipher = true) {
+  async decrypt(id: string, packet: Packet, returnDecipher = false) {
     const { signature, ...packetBody } = packet
     const sigValid = await this.verify(id, JSON.stringify(packetBody), signature)
     // Ignore message if signature invalid
@@ -334,7 +333,7 @@ export default class {
     console.log('Calculated decryption creds', decryptKey.toString('hex'), iv.toString('hex'))
     // Decrypt the message contents
     if (message) {
-      const msgDecipher = crypto.createDecipheriv(CIPHER, decryptKey, iv)
+      const msgDecipher = scrypto.createDecipheriv(CIPHER, decryptKey, iv)
       message = msgDecipher.update(message, 'hex', 'utf8') + msgDecipher.final('utf8')
       message = JSON.parse(message)
       console.log('--> Decrypted message', message)
@@ -342,7 +341,7 @@ export default class {
 
     // Return Decipher
     let res = { message, decipher: null }
-    if (returnDecipher) res.decipher = crypto.createDecipheriv(CIPHER, decryptKey, iv)
+    if (returnDecipher) res.decipher = scrypto.createDecipheriv(CIPHER, decryptKey, iv)
     return res
   }
 }
