@@ -26,6 +26,7 @@ exports.strToUint8 = (hex: string): Uint8Array => {
   return Uint8Array.from(Buffer.from(hex))
 }
 
+// Converts a Uint8Array to a hex string
 exports.Uint8ToHex = (uint8: Uint8Array): string => {
   return Buffer.from(uint8).toString('hex')
 }

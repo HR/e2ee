@@ -21,18 +21,6 @@ interface Store {
   set: (key: string, value: any) => void
 }
 
-// class ObjectStore implements Store {
-//   private _store: object = {};
-
-//   get<U extends keyof this._store>(key: U) {
-//     return this._store[key]
-//   }
-
-//   set(key: string, value: any) {
-//     this._store[key] = value
-//   }
-// }
-
 interface GetSecretIdentity {
   (publicKey: string): string
 }
